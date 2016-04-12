@@ -7,6 +7,9 @@ var cannonShots = [];
 
 var date = new Date();
 
+var timeText = document.getElementById("time");
+var time;
+
 var fieldOfView = 75,
     aspectRatio = window.innerWidth / window.innerHeight,
     nearClippingPane = 0.1,
@@ -14,8 +17,11 @@ var fieldOfView = 75,
 
 var GAME_STATE = {
   start : 0,
-  running : 1
+  running : 1,
+  over: 2
 }
+var gameState = GAME_STATE.start;
+
 
 var moveState = {
   forward: 0,
@@ -58,11 +64,11 @@ var shipMaterial = new THREE.MeshBasicMaterial( { color : 0x000000 } );
 var shipMesh = new THREE.Mesh( shipGeometry, shipMaterial );
 var shipEdges = new THREE.EdgesHelper( shipMesh, 0xFFFFFF );
 
-scene.add( shipMesh );
-scene.add( shipEdges );
-
 shipMesh.translateY(-15);
 shipMesh.rotation.set(0,0,Math.PI);
+
+scene.add( shipMesh );
+scene.add( shipEdges );
 
 window.addEventListener( 'mousemove', onMouseMove, false);
 window.addEventListener('keydown', keydown, false);
@@ -77,32 +83,75 @@ function render() {
   icoMesh.rotation.x += 0.4 * delta;
   icoMesh.rotation.y += 0.4 * delta;
 
+  if (gameState == GAME_STATE.start) {
+    time = 0.0;
+    shipMesh.position.set(0,-15,0);
+    shipMesh.rotation.set(0,0,Math.PI);
+  } else if (gameState == GAME_STATE.running) {
+
+    console.log(SHOT_PERCENT)
+    if (time > 30) {
+      SHOT_PERCENT = 0.0;
+    } else if (time > 20) {
+      SHOT_PERCENT = 0.1;
+    } else if (time > 15) {
+      SHOT_PERCENT = 0.25;
+    } else if (time > 11.0) {
+      SHOT_PERCENT = 0.4;
+    } else if (time > 6.0) {
+      SHOT_PERCENT = 0.6;
+    } else if (time > 3.0) {
+      SHOT_PERCENT = 0.75;
+    } else {
+      SHOT_PERCENT = 0.95;
+    }
+
+    time += delta;
+    timeText.innerHTML = "Time: " + time;
+
+    updateShipPosition(delta);
+
+    if (Math.random() > SHOT_PERCENT) {
+      addShot();
+    }
+
+    moveShots(delta);
+
+    for (var i = 0; i < cannonShots.length; i++) {
+
+      var cannonShotMesh = cannonShots[i].cannonMesh;
+
+      if (cannonShotMesh.visible) {
+        var originPoint = cannonShotMesh.position.clone();
+        for (var v = 0; v < cannonShotMesh.geometry.vertices.length; v++) {
+          var localVertex = cannonShotMesh.geometry.vertices[v].clone();
+          var globalVertex = localVertex.applyMatrix4(cannonShotMesh.matrix);
+          var directionVector = globalVertex.sub(cannonShotMesh.position);
+
+          var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
+          var collisionArray = [];
+          collisionArray.push(shipMesh);
+          var collisionResults = ray.intersectObjects(collisionArray);
+
+          if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
+            console.log(" HIT ");
+            gameState = GAME_STATE.over;
+          }
+        }
+      }
+    }
+
+  } else if (gameState == GAME_STATE.over) {
+    gameState = GAME_STATE.start;
+    // removeShots();
+  }
+
+  
+
   // shipMesh.rotation.y += 0.4 * delta;
 
 
-  updateShipPosition(delta);
-
-  if (Math.random() > SHOT_PERCENT) {
-    addShot();
-  }
-
-  moveShots(delta);
-
-  // for (var i = 0; i < cannonShots.length; i++) {
-  //   var cannonShotMesh = cannonShots[i].cannonMesh;
-  //   for (var v = 0; v < cannonShotMesh.geometry.vertices.length; v++) {
-  //     var localVertex = cannonShotMesh.geometry.vertices[v].clone();
-  //     var globalVertex = cannonShotMesh.matrix.multiplyVector3(localVertex);
-  //     var directionVector = globalVertex.subSelf(cannonShotMesh.position);
-
-  //     var ray = new THREE.Ray(cannonShotMesh.position, directionVector.clone().normalize());
-  //     var collisionResults = ray.intersectObjects( shipMesh );
-  //     if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
-  //       console.log('HIT');
-  //     }
-  //   }
-  // }
-
+  
 
   renderer.render( scene, camera );
 }
@@ -111,14 +160,16 @@ render();
 function addShot() {
   var vector = new THREE.Vector3();
   var cannonGeometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5);
-  var cannonMaterial = new THREE.MeshBasicMaterial( {color: 0xFFFFFF } );
+  var cannonMaterial = new THREE.MeshBasicMaterial( {color: 0x000000 } );
   var cannonMesh = new THREE.Mesh( cannonGeometry, cannonMaterial );
+  var cannonEdges = new THREE.EdgesHelper( cannonMesh, 0xFFFFFF)
 
   var shot = {};
   shot.cannonMesh = cannonMesh;
   shot.vector = new THREE.Vector3((Math.random()*2)-1, (Math.random()*2)-1, 0).normalize();
 
   scene.add( cannonMesh );
+  scene.add( cannonEdges );
   cannonShots.push(shot);
 }
 
@@ -131,6 +182,14 @@ function moveShots(delta) {
     cannonShotMesh.rotation.y += 0.3*moveMult;
     cannonShotMesh.rotation.z += 0.3*moveMult;    
   }
+}
+
+function removeShots() {
+  for (var i = 0; i < cannonShots.length; i++) {
+    scene.remove(cannonShots[i].cannonShotMesh);
+  }
+  render();
+  cannonShots = [];
 }
 
 function updateShipPosition(delta) {
@@ -166,6 +225,12 @@ function keydown(e) {
   var key = e.keyCode ? e.keyCode : e.which;
 
   switch (key) {
+    case 32: // Space
+      if (gameState == GAME_STATE.start) {
+        gameState = GAME_STATE.running;
+        time = 0.0;
+      }
+      break;
     case 87: // W
       moveState.forward = 1;
       break;
