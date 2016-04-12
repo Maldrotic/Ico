@@ -1,0 +1,13 @@
+{
+  "name": "ico",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "bower install"
+  },
+  "dependencies": {
+    "bower": "^1.5.3",
+    "express": "^4.13.0",
+    "request": "^2.65.0"
+  }
+}
