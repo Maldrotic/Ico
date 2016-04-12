@@ -1,2 +1,2 @@
 # Ico
-A stay-alive arcade game made with three.js
+A stay-alive arcade game written in javascript using three.js
