@@ -92,6 +92,7 @@ function render() {
   icoMesh.rotation.y += 0.4 * delta;
 
   if (gameState == GAME_STATE.start) {
+    showHelp();
     SHOT_PERCENT = 0;
     removeShots();
     time = 0.0;
@@ -107,6 +108,8 @@ function render() {
     shipMesh.position.set(0,-15,0);
     shipMesh.rotation.set(0,0,Math.PI);
   } else if (gameState == GAME_STATE.running) {
+
+    hideHelp();
 
     // console.log(SHOT_PERCENT)
     if (time > 20) {
@@ -159,6 +162,14 @@ function render() {
 render();
 
 
+function showHelp() {
+  $('#help').show();
+}
+
+function hideHelp() {
+  $('#help').hide();
+}
+
 
 
 var frustum = new THREE.Frustum();
@@ -199,7 +210,7 @@ function updateShots(delta) {
     waveTime = 0.0;
   }
   if (doWaveShots) {
-    waveShot(waveStartAngle, delta);
+    waveShot(waveStartAngle, 3, 4, delta);
   }
 
   var moveMult = delta * SHOT_MOVEMENT_SPEED;
@@ -213,7 +224,6 @@ function updateShots(delta) {
       var cannonShotMesh = cannonShots[i].mesh;
       cannonShotMesh.applyMatrix(new THREE.Matrix4().makeTranslation(cannonShots[i].vector.x*moveMult, cannonShots[i].vector.y*moveMult, 0));
       cannonShotMesh.rotation.x += 0.3*moveMult;
-      cannonShotMesh.rotation.y += 0.3*moveMult;
       cannonShotMesh.rotation.z += 0.3*moveMult;
     }
   }
@@ -237,7 +247,14 @@ function circleShot(delta) {
 var waveVariation = 0.0;
 var waveGoRight = true;
 var shotCount = 0;
-function waveShot(startAngle, delta) {
+
+/*
+  @param startAngle the angle at which the first wave is emitted
+  @param numOfWaves the number of waves to be fired, spaced evenly from the start angle
+  @param shotSpacing the distance between each shot fired
+  @param delta the amount of time passed since the last frame
+*/
+function waveShot(startAngle, numOfWaves, shotSpacing, delta) {
 
   if (waveVariation > 1) {
     waveGoRight = false;
@@ -251,10 +268,9 @@ function waveShot(startAngle, delta) {
     waveVariation-=delta;
   }
 
-  var numOfWaves = 3;
   var waveSpacing = (Math.PI*2.0)/numOfWaves;
 
-  if (shotCount > 4) {
+  if (shotCount > shotSpacing) {
     for (var i = 0; i < numOfWaves; i++) {
       var angle = startAngle+waveVariation+(i*waveSpacing);
       var xDir = Math.cos(startAngle+waveVariation+(i*waveSpacing));
