@@ -7,6 +7,17 @@ html, body {
   background-color: black;
 }
 
+@font-face {
+  font-family: customFont;
+  src: url(../Vectorb.ttf);
+}
+
 #time {
+  font-family: customFont;
   color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  margin-left: 10px;
+  margin-top: 10px;
 }

@@ -22,7 +22,6 @@ var GAME_STATE = {
 }
 var gameState = GAME_STATE.start;
 
-
 var moveState = {
   forward: 0,
   left: 0,
@@ -74,6 +73,15 @@ window.addEventListener( 'mousemove', onMouseMove, false);
 window.addEventListener('keydown', keydown, false);
 window.addEventListener('keyup', keyup, false);
 
+var doRandomShots;
+var randomTime;
+var doCircleShots;
+var circleToggleTime;
+var circleTime;
+var doWaveShots;
+var waveTime;
+var waveStartAngle;
+
 
 function render() {
   requestAnimationFrame( render );
@@ -84,42 +92,47 @@ function render() {
   icoMesh.rotation.y += 0.4 * delta;
 
   if (gameState == GAME_STATE.start) {
+    SHOT_PERCENT = 0;
+    removeShots();
     time = 0.0;
+    doRandomShots = false;
+    randomTime = 0.0;
+    doCircleShots = true;
+    circleToggleTime = 0.0;
+    circleTime = 0.0;
+    doWaveShots = false;
+    waveTime = 0.0;
+    waveStartAngle = Math.random()*Math.PI*2;
+    timeText.innerHTML = "Time: " + parseFloat(Math.round(time * 100) / 100).toFixed(2);
     shipMesh.position.set(0,-15,0);
     shipMesh.rotation.set(0,0,Math.PI);
   } else if (gameState == GAME_STATE.running) {
 
     console.log(SHOT_PERCENT)
-    if (time > 30) {
-      SHOT_PERCENT = 0.0;
-    } else if (time > 20) {
-      SHOT_PERCENT = 0.1;
+    if (time > 20) {
+      SHOT_PERCENT = 0.95;
     } else if (time > 15) {
-      SHOT_PERCENT = 0.25;
+      SHOT_PERCENT = 0.75;
     } else if (time > 11.0) {
       SHOT_PERCENT = 0.4;
     } else if (time > 6.0) {
-      SHOT_PERCENT = 0.6;
+      SHOT_PERCENT = 0.25;
     } else if (time > 3.0) {
-      SHOT_PERCENT = 0.75;
+      SHOT_PERCENT = 0.15;
     } else {
-      SHOT_PERCENT = 0.95;
+      SHOT_PERCENT = 0.1;
     }
 
     time += delta;
-    timeText.innerHTML = "Time: " + time;
+    timeText.innerHTML = "Time: " + parseFloat(Math.round(time * 100) / 100).toFixed(2);;
 
     updateShipPosition(delta);
 
-    if (Math.random() > SHOT_PERCENT) {
-      addShot();
-    }
-
-    moveShots(delta);
+    updateShots(delta);
 
     for (var i = 0; i < cannonShots.length; i++) {
 
-      var cannonShotMesh = cannonShots[i].cannonMesh;
+      var cannonShotMesh = cannonShots[i].mesh;
 
       if (cannonShotMesh.visible) {
         var originPoint = cannonShotMesh.position.clone();
@@ -134,30 +147,134 @@ function render() {
           var collisionResults = ray.intersectObjects(collisionArray);
 
           if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
-            console.log(" HIT ");
             gameState = GAME_STATE.over;
           }
         }
       }
     }
 
-  } else if (gameState == GAME_STATE.over) {
-    gameState = GAME_STATE.start;
-    // removeShots();
   }
-
-  
-
-  // shipMesh.rotation.y += 0.4 * delta;
-
-
-  
-
   renderer.render( scene, camera );
 }
 render();
 
-function addShot() {
+
+
+
+var frustum = new THREE.Frustum();
+var cameraViewProjectionMatrix = new THREE.Matrix4();
+// every time the camera or objects change position (or every frame)
+
+camera.updateMatrixWorld(); // make sure the camera matrix is updated
+camera.matrixWorldInverse.getInverse( camera.matrixWorld );
+cameraViewProjectionMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
+frustum.setFromMatrix( cameraViewProjectionMatrix );
+function updateShots(delta) {
+
+  randomTime += delta;
+  circleToggleTime += delta;
+  circleTime += delta;
+  waveTime += delta;
+
+  // Random shot
+  if (randomTime > 5) {
+    doRandomShots = !doRandomShots;
+    randomTime = 0.0;
+  }
+  if (doRandomShots) {
+    randomShot();
+  }
+
+  if (circleToggleTime-3 > 8) {
+    doCircleShots = !doCircleShots;
+    circleToggleTime = 0.0;
+  }
+  if (doCircleShots) {
+    circleShot();
+  }
+
+  if (waveTime > 10) {
+    doWaveShots = !doWaveShots;
+    waveStartAngle = Math.random()*2;
+    waveTime = 0.0;
+  }
+  if (doWaveShots) {
+    waveShot(waveStartAngle, delta);
+  }
+
+  var moveMult = delta * SHOT_MOVEMENT_SPEED;
+  for (var i = 0; i < cannonShots.length; i++) {
+    if (!frustum.intersectsObject(cannonShots[i].mesh)) {
+      scene.remove(cannonShots[i].mesh);
+      scene.remove(cannonShots[i].edges);
+      cannonShots.splice(i,1);
+      i--;
+    } else {
+      var cannonShotMesh = cannonShots[i].mesh;
+      cannonShotMesh.applyMatrix(new THREE.Matrix4().makeTranslation(cannonShots[i].vector.x*moveMult, cannonShots[i].vector.y*moveMult, 0));
+      cannonShotMesh.rotation.x += 0.3*moveMult;
+      cannonShotMesh.rotation.y += 0.3*moveMult;
+      cannonShotMesh.rotation.z += 0.3*moveMult;
+    }
+  }
+}
+
+function randomShot() {
+  if (Math.random()+0.2 < SHOT_PERCENT) {
+    addShot((Math.random()*2)-1, (Math.random()*2)-1, 0);
+  }
+}
+
+function circleShot(delta) {
+  if (circleTime > 2-SHOT_PERCENT) {
+    for (var i = 0; i < 50*SHOT_PERCENT; i++) {
+      addShot((Math.random()*2)-1,(Math.random()*2)-1,0);
+    }
+    circleTime = 0.0;
+  }
+}
+
+var waveVariation = 0.0;
+var waveGoRight = true;
+function waveShot(startAngle, delta) {
+
+  if (waveVariation > 1) {
+    waveGoRight = false;
+  } else if (waveVariation < -1){
+    waveGoRight = true;
+  }
+
+  if (waveGoRight) {
+    waveVariation+=delta;
+  } else {
+    waveVariation-=delta;
+  }
+
+  var numOfWaves = 3;
+  var waveSpacing = (Math.PI*2.0)/numOfWaves;
+
+  // if (time%1 < 0.1) {
+    for (var i = 0; i < numOfWaves; i++) {
+      var angle = startAngle+waveVariation+(i*waveSpacing);
+      var xDir = Math.cos(startAngle+waveVariation+(i*waveSpacing));
+      var yDir = Math.sin(startAngle+waveVariation+(i*waveSpacing));
+
+      addShot(xDir, yDir, 0);
+    }
+  // }
+}
+
+function switchShotType(type) {
+  var currentIndex = ICO_SHOT_TYPE.indexOf(icoShotType);
+  if (currentIndex+1 >= ICO_SHOT_TYPE.length) {
+    icoShotType = ICO_SHOT_TYPE[0];
+  } else {
+    icoShotType = ICO_SHOT_TYPE[currentIndex+1];
+  }
+  console.log(icoShotType);
+}
+
+function addShot(xDir, yDir, zDir) {
   var vector = new THREE.Vector3();
   var cannonGeometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5);
   var cannonMaterial = new THREE.MeshBasicMaterial( {color: 0x000000 } );
@@ -165,38 +282,28 @@ function addShot() {
   var cannonEdges = new THREE.EdgesHelper( cannonMesh, 0xFFFFFF)
 
   var shot = {};
-  shot.cannonMesh = cannonMesh;
-  shot.vector = new THREE.Vector3((Math.random()*2)-1, (Math.random()*2)-1, 0).normalize();
+  shot.mesh = cannonMesh;
+  shot.edges = cannonEdges;
+  shot.vector = new THREE.Vector3(xDir, yDir, zDir).normalize();
 
   scene.add( cannonMesh );
   scene.add( cannonEdges );
   cannonShots.push(shot);
 }
 
-function moveShots(delta) {
-  var moveMult = delta * SHOT_MOVEMENT_SPEED;
-  for (var i = 0; i < cannonShots.length; i++) {
-    var cannonShotMesh = cannonShots[i].cannonMesh;
-    cannonShotMesh.applyMatrix(new THREE.Matrix4().makeTranslation(cannonShots[i].vector.x*moveMult, cannonShots[i].vector.y*moveMult, 0));
-    cannonShotMesh.rotation.x += 0.3*moveMult;
-    cannonShotMesh.rotation.y += 0.3*moveMult;
-    cannonShotMesh.rotation.z += 0.3*moveMult;    
-  }
-}
-
 function removeShots() {
-  for (var i = 0; i < cannonShots.length; i++) {
-    scene.remove(cannonShots[i].cannonShotMesh);
+  var arrayLength = cannonShots.length;
+  for (var i = 0; i < arrayLength; i++) {
+    if (scene.children.indexOf(cannonShots[i].mesh) !== -1) {
+      scene.remove(cannonShots[i].mesh);
+      scene.remove(cannonShots[i].edges);
+    }
   }
-  render();
   cannonShots = [];
 }
 
 function updateShipPosition(delta) {
   var moveMult = delta * MOVEMENT_SPEED;
-
-  // shipMesh.translateOnAxis(shipMesh.localToWorld(new THREE.Vector3(1,0,0)).normalize(), );
-  // shipMesh.translateOnAxis(shipMesh.localToWorld(new THREE.Vector3(0,1,0)).normalize(), );
 
   shipMesh.applyMatrix(new THREE.Matrix4().makeTranslation(moveVector.x*moveMult, -moveVector.y*moveMult, 0) );
 
@@ -228,7 +335,8 @@ function keydown(e) {
     case 32: // Space
       if (gameState == GAME_STATE.start) {
         gameState = GAME_STATE.running;
-        time = 0.0;
+      } else if (gameState == GAME_STATE.over) {
+        gameState = GAME_STATE.start;
       }
       break;
     case 87: // W
