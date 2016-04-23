@@ -92,7 +92,8 @@ function render() {
   icoMesh.rotation.y += 0.4 * delta;
 
   if (gameState == GAME_STATE.start) {
-    showHelp();
+    $('#help1').show();
+    $('#help2').hide();
     SHOT_PERCENT = 0;
     removeShots();
     time = 0.0;
@@ -109,7 +110,7 @@ function render() {
     shipMesh.rotation.set(0,0,Math.PI);
   } else if (gameState == GAME_STATE.running) {
 
-    hideHelp();
+    $('#help1').hide();
 
     // console.log(SHOT_PERCENT)
     if (time > 20) {
@@ -156,6 +157,8 @@ function render() {
       }
     }
 
+  } else if (gameState == GAME_STATE.over) {
+    $('#help2').show();
   }
   renderer.render( scene, camera );
 }

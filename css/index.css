@@ -22,7 +22,7 @@ html, body {
   margin-top: 10px;
 }
 
-#help {
+.help {
   font-family: customFont;
   color: white;
   position: fixed;
