@@ -108,7 +108,7 @@ function render() {
     shipMesh.rotation.set(0,0,Math.PI);
   } else if (gameState == GAME_STATE.running) {
 
-    console.log(SHOT_PERCENT)
+    // console.log(SHOT_PERCENT)
     if (time > 20) {
       SHOT_PERCENT = 0.95;
     } else if (time > 15) {
@@ -236,6 +236,7 @@ function circleShot(delta) {
 
 var waveVariation = 0.0;
 var waveGoRight = true;
+var shotCount = 0;
 function waveShot(startAngle, delta) {
 
   if (waveVariation > 1) {
@@ -253,7 +254,7 @@ function waveShot(startAngle, delta) {
   var numOfWaves = 3;
   var waveSpacing = (Math.PI*2.0)/numOfWaves;
 
-  // if (time%1 < 0.1) {
+  if (shotCount > 4) {
     for (var i = 0; i < numOfWaves; i++) {
       var angle = startAngle+waveVariation+(i*waveSpacing);
       var xDir = Math.cos(startAngle+waveVariation+(i*waveSpacing));
@@ -261,7 +262,10 @@ function waveShot(startAngle, delta) {
 
       addShot(xDir, yDir, 0);
     }
-  // }
+    shotCount = 0;
+  } else {
+    shotCount++;
+  }
 }
 
 function switchShotType(type) {
